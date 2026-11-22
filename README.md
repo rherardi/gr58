@@ -33,30 +33,6 @@ GR-58 is applied through three mechanisms.
    - The correction turn the hook causes is not blocked again.
    - Any error produces no output, so the hook never keeps a session from ending.
 
-## Limitations
-
-### What the hook enforces
-
-- **The hook runs after the message is shown.** It causes a correction turn; it cannot withhold a message.
-- **Only first-person words block.** Another GR-58 candidate, such as "the gate decides", appears only in the feedback for a turn that also has a first-person hit; on its own it passes.
-- **One correction turn per block.** The correction turn runs with `stop_hook_active` set and is not checked again, so a correction that still breaks the rule passes.
-- **Feedback is capped** at about 1,800 characters; a longer hit list ends with "(list truncated)".
-
-### What the scan covers
-
-- **Only the agent's messages are scanned.** Text the agent writes into files (plans, reports, memory entries) is not.
-- **The scan lists candidates, not violations.** Whether a first-person word refers to the agent, and whether a word attributes a mind to code, is settled by reading.
-- **The word list samples the rule.** A mind-word construction not on the list is not found.
-- **Skipped text is not checked.** Quoted spans are skipped, including the agent's own drafts put in quotes. In a plain-text rule file, text directly after a GR-58 header is skipped up to the next blank line.
-
-### Where it runs
-
-- **Only Claude Code is covered.** The hook uses the Claude Code `Stop` hook interface.
-- **The hook runs in every project** in which Claude Code loads `~/.claude/settings.json`.
-- **Hook settings may be read only when a session starts.** The Claude Code hook documentation says so, although in testing a running session ran a newly added `Stop` entry without a restart. If the hook does not fire, restart the session or review the change in `/hooks`.
-- **A higher-level setting can switch it off.** A `disableAllHooks` setting in project settings or an organization-wide settings policy stops it from running.
-- **It fails open.** With `bash`, `python3` or `gr58_scan.py` missing, or on any error, the hook produces no output, and nothing reports that it did not run.
-
 ## Install and configure for Claude Code
 
 Requirements: `bash`, `python3`, and `jq` for the merge command in step 4. Run the commands from a clone of this repository.
@@ -111,6 +87,30 @@ python3 ~/.claude/tools/gr58_scan.py FILE ...
 ### Uninstall
 
 Remove the `Stop` entry that runs `gr58-check.sh` from `~/.claude/settings.json`, delete `~/.claude/tools/gr58_scan.py`, `~/.claude/hooks/gr58-check.sh`, `~/.claude/hooks/gr58-check.md` and `~/.claude/hooks/install_hook.md`, then start a new session.
+
+## Limitations
+
+### What the hook enforces
+
+- **The hook runs after the message is shown.** It causes a correction turn; it cannot withhold a message.
+- **Only first-person words block.** Another GR-58 candidate, such as "the gate decides", appears only in the feedback for a turn that also has a first-person hit; on its own it passes.
+- **One correction turn per block.** The correction turn runs with `stop_hook_active` set and is not checked again, so a correction that still breaks the rule passes.
+- **Feedback is capped** at about 1,800 characters; a longer hit list ends with "(list truncated)".
+
+### What the scan covers
+
+- **Only the agent's messages are scanned.** Text the agent writes into files (plans, reports, memory entries) is not.
+- **The scan lists candidates, not violations.** Whether a first-person word refers to the agent, and whether a word attributes a mind to code, is settled by reading.
+- **The word list samples the rule.** A mind-word construction not on the list is not found.
+- **Skipped text is not checked.** Quoted spans are skipped, including the agent's own drafts put in quotes. In a plain-text rule file, text directly after a GR-58 header is skipped up to the next blank line.
+
+### Where it runs
+
+- **Only Claude Code is covered.** The hook uses the Claude Code `Stop` hook interface.
+- **The hook runs in every project** in which Claude Code loads `~/.claude/settings.json`.
+- **Hook settings may be read only when a session starts.** The Claude Code hook documentation says so, although in testing a running session ran a newly added `Stop` entry without a restart. If the hook does not fire, restart the session or review the change in `/hooks`.
+- **A higher-level setting can switch it off.** A `disableAllHooks` setting in project settings or an organization-wide settings policy stops it from running.
+- **It fails open.** With `bash`, `python3` or `gr58_scan.py` missing, or on any error, the hook produces no output, and nothing reports that it did not run.
 
 ## License
 
