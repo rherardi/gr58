@@ -11,7 +11,7 @@ GR-58 is a rule for AI agents, with a Claude Code `Stop` hook that checks it. Th
 | `gr58_scan.py` | `~/.claude/tools/` | Lists GR-58 candidates in text. Runs on files, runs its own controls, or runs as a `Stop` hook. |
 | `gr58-check.sh` | `~/.claude/hooks/` | The `Stop` hook wrapper that runs `gr58_scan.py --hook`. |
 | `gr58-check.md` | `~/.claude/hooks/` | Reference for the hook: the rule, wiring, behavior and limits. |
-| `install_hook.md` | stays in the repository | The `settings.json` entry that registers the hook, ready to paste or merge. |
+| `install_hook.md` | `~/.claude/hooks/` | The `settings.json` entry that registers the hook, ready to paste or merge. |
 
 ## Purpose of GR-58
 
@@ -66,7 +66,7 @@ Requirements: `bash`, `python3`, and `jq` for the merge command in step 4. Run t
    ```bash
    mkdir -p ~/.claude/tools ~/.claude/hooks
    cp gr58_scan.py ~/.claude/tools/
-   cp gr58-check.sh gr58-check.md ~/.claude/hooks/
+   cp gr58-check.sh gr58-check.md install_hook.md ~/.claude/hooks/
    ```
 
 2. **Add the rule to the agent's instructions.** Copy the "Rule" section of `gr58-check.md` into `~/.claude/CLAUDE.md`.
@@ -77,13 +77,13 @@ Requirements: `bash`, `python3`, and `jq` for the merge command in step 4. Run t
    python3 ~/.claude/tools/gr58_scan.py --self-test
    ```
 
-4. **Register the hook.** `install_hook.md` holds the entry for `~/.claude/settings.json`.
-   - **If `~/.claude/settings.json` does not exist,** copy `install_hook.md` to it.
+4. **Register the hook.** `~/.claude/hooks/install_hook.md` holds the entry for `~/.claude/settings.json`.
+   - **If `~/.claude/settings.json` does not exist,** copy `~/.claude/hooks/install_hook.md` to it.
    - **If it exists and has no `Stop` entry under `hooks`,** merge the entry:
 
      ```bash
      cp ~/.claude/settings.json ~/.claude/settings.json.bak
-     jq -s '.[0] * .[1]' ~/.claude/settings.json.bak install_hook.md > ~/.claude/settings.json
+     jq -s '.[0] * .[1]' ~/.claude/settings.json.bak ~/.claude/hooks/install_hook.md > ~/.claude/settings.json
      ```
 
    - **If `hooks` already has a `Stop` entry,** add the inner object, the one with `"hooks"`, to that `Stop` array by hand. The `jq` merge above would replace the existing array.
@@ -110,7 +110,7 @@ python3 ~/.claude/tools/gr58_scan.py FILE ...
 
 ### Uninstall
 
-Remove the `Stop` entry that runs `gr58-check.sh` from `~/.claude/settings.json`, delete `~/.claude/tools/gr58_scan.py`, `~/.claude/hooks/gr58-check.sh` and `~/.claude/hooks/gr58-check.md`, then start a new session.
+Remove the `Stop` entry that runs `gr58-check.sh` from `~/.claude/settings.json`, delete `~/.claude/tools/gr58_scan.py`, `~/.claude/hooks/gr58-check.sh`, `~/.claude/hooks/gr58-check.md` and `~/.claude/hooks/install_hook.md`, then start a new session.
 
 ## License
 
