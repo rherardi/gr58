@@ -40,7 +40,7 @@ To have the agent apply the rule, include its text in the agent's instructions, 
 
 ## Behavior
 
-1. The event's `transcript_path` is read. The turn's text is every agent text block after the last entry carrying the user's own text; tool results do not start a turn.
+1. The event's `transcript_path` is read. The turn's text is every agent text block after the last entry carrying the user's own text; tool results do not start a turn. Claude Code can fire the `Stop` event before the final message is written to the transcript, so the event's `last_assistant_message` is appended when the transcript does not yet hold it. An event without that field makes the hook re-read the transcript for up to 3 seconds until the final message appears.
 2. The scan skips fenced code, inline code, double-quoted spans, cross-references and Appendix I style references, then lists candidates.
 3. A first-person hit (I, me, my, mine, myself, we, us, our, ours, let's) produces `{"decision":"block","reason":...}`. The reason lists those hits with line and context and directs the agent to resend the message with them removed. GR-58 (b) candidates are not reported.
 4. A turn with no first-person hit produces no output and ends normally.
@@ -51,6 +51,7 @@ To have the agent apply the rule, include its text in the agent's instructions, 
 - The hook runs after the message is shown. It cannot withhold a message; it can only cause a correction.
 - The scan lists candidates. Whether a first-person word refers to the agent, and whether a (b) word attributes a mind, is settled by reading.
 - Quoted spans are skipped, including the agent's own quoted drafts.
+- On any error the hook fails open with no output; the scan appends the traceback to `~/.claude/gr58/hook-errors.log`.
 - Feedback is capped at about 1,800 characters and marked "(list truncated)" beyond that.
 - The Claude Code hook documentation describes hook settings as captured when a session starts. In testing, a running session ran a newly added `Stop` entry without a restart; if the hook does not fire, restart the session or review the change in `/hooks`.
 

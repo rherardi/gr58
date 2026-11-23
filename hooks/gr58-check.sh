@@ -9,7 +9,8 @@
 # Full reference: gr58-check.md.
 #
 # Fail-open: a missing interpreter or scan script, or any error, ends with no
-# output and exit 0, so the hook can never stop a session from ending.
+# output and exit 0, so the hook can never stop a session from ending. The scan
+# appends the traceback of an error to ~/.claude/gr58/hook-errors.log.
 scan="$HOME/.claude/tools/gr58_scan.py"
 command -v python3 >/dev/null 2>&1 && [ -f "$scan" ] || exit 0
 exec python3 "$scan" --hook

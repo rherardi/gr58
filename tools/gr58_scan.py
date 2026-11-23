@@ -15,9 +15,13 @@ Appendix I style references, and the text of a GR-58 rule definition itself.
   python3 ~/.claude/tools/gr58_scan.py --self-test   runs the built-in controls; exit 1 on failure
   python3 ~/.claude/tools/gr58_scan.py --hook        Stop-hook mode, called by ~/.claude/hooks/gr58-check.sh
 """
+import datetime
 import json
+import os
 import re
 import sys
+import time
+import traceback
 
 # ---------------------------------------------------------------------------
 # Word lists: what counts as a candidate
@@ -185,14 +189,12 @@ def self_test():
 
 FIRST_PERSON = {"i", "me", "my", "mine", "myself", "we", "us", "our", "ours", "let's", "let’s"}
 REASON_LIMIT = 1800   # Claude Code truncates hook context beyond about 2 KB
+ERROR_LOG = os.path.expanduser("~/.claude/gr58/hook-errors.log")
+FINAL_WAIT_SECONDS, FINAL_POLL_SECONDS = 3.0, 0.1
 
 
-def last_turn_text(transcript_path):
-    """Return the agent's visible text since the last user-typed entry in a session transcript (JSONL).
-
-    Tool results arrive as user entries too; only an entry carrying the user's own text
-    (a string, or a text block) starts a new turn.
-    """
+def read_entries(transcript_path):
+    """Parse a session transcript (JSONL) into a list of entries, skipping unparsable lines; used by the hook."""
     entries = []
     with open(transcript_path, encoding="utf-8", errors="replace") as handle:
         for line in handle:
@@ -200,6 +202,36 @@ def last_turn_text(transcript_path):
                 entries.append(json.loads(line))
             except ValueError:
                 continue
+    return entries
+
+
+def final_text_written(entries):
+    """Report whether the transcript's last user or assistant entry is assistant text, i.e. the turn's final message is on disk.
+
+    Used by the hook's fallback path when the Stop event carries no last_assistant_message.
+    """
+    for entry in reversed(entries):
+        if entry.get("type") not in ("user", "assistant"):
+            continue
+        content = (entry.get("message") or {}).get("content")
+        return entry.get("type") == "assistant" and isinstance(content, list) and any(
+            isinstance(b, dict) and b.get("type") == "text" for b in content)
+    return False
+
+
+def last_turn_text(transcript_path, wait=False):
+    """Return the agent's visible text since the last user-typed entry in a session transcript (JSONL).
+
+    Tool results arrive as user entries too; only an entry carrying the user's own text
+    (a string, or a text block) starts a new turn. With wait, re-reads the transcript for up to
+    FINAL_WAIT_SECONDS until the final message is on disk, since Claude Code can fire the Stop
+    event before writing it.
+    """
+    entries = read_entries(transcript_path)
+    deadline = time.monotonic() + (FINAL_WAIT_SECONDS if wait else 0)
+    while not final_text_written(entries) and time.monotonic() < deadline:
+        time.sleep(FINAL_POLL_SECONDS)
+        entries = read_entries(transcript_path)
     texts = []
     for entry in entries:
         message = entry.get("message") or {}
@@ -214,6 +246,20 @@ def last_turn_text(transcript_path):
     return "\n\n".join(t for t in texts if t.strip())
 
 
+def turn_text(event):
+    """Return the turn's text for the hook: the transcript's text blocks plus the event's final message.
+
+    The Stop event's last_assistant_message is the authoritative final message, appended when the
+    transcript does not already hold it; without that field, the transcript is re-read until the
+    final message is on disk (last_turn_text with wait).
+    """
+    final = event.get("last_assistant_message")
+    if isinstance(final, str) and final.strip():
+        text = last_turn_text(event["transcript_path"])
+        return text if final.strip() in text else "\n\n".join(t for t in (text, final) if t.strip())
+    return last_turn_text(event["transcript_path"], wait=True)
+
+
 def hook_decision(event):
     """Map one Stop-hook input to a decision: block on a first-person hit, else no output.
 
@@ -222,7 +268,7 @@ def hook_decision(event):
     """
     if event.get("stop_hook_active"):
         return ""
-    text = last_turn_text(event["transcript_path"])
+    text = turn_text(event)
     hits = list(scan(text))
     first = [h for h in hits if h[1].lower() in FIRST_PERSON]
     if not first:
@@ -237,10 +283,16 @@ def hook_decision(event):
 
 
 def hook_main():
-    """Stop-hook entry: read the event from stdin and print the decision; fails open on any error."""
+    """Stop-hook entry: read the event from stdin and print the decision; on any error, appends the traceback to ERROR_LOG and fails open."""
     try:
         output = hook_decision(json.load(sys.stdin))
-    except Exception:   # a broken hook must never wedge a session
+    except Exception:   # a broken hook must never wedge a session, but the failure is logged
+        try:
+            os.makedirs(os.path.dirname(ERROR_LOG), exist_ok=True)
+            with open(ERROR_LOG, "a", encoding="utf-8") as log:
+                log.write(f"{datetime.datetime.now().astimezone().isoformat()}\n{traceback.format_exc()}\n")
+        except OSError:
+            pass
         return 0
     if output:
         print(output)

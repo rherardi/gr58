@@ -27,11 +27,11 @@ GR-58 is applied through three mechanisms.
    - **Skipped:** fenced and inline code, double-quoted spans (straight and curly, including across a line break within a paragraph), cross-references such as "see R6" or "see below", Appendix I style references, and the text of a GR-58 rule definition.
    - **Output:** one line per hit: `file:line`, the word, and its context.
 3. **Stop hook.** At the end of each Claude Code turn, `~/.claude/hooks/gr58-check.sh` runs `gr58_scan.py --hook`:
-   - It reads the turn's text from the session transcript.
+   - It reads the turn's text from the session transcript, plus the final message from the event's `last_assistant_message` field, because Claude Code can fire the `Stop` event before the final message is written to the transcript. Without that field, it re-reads the transcript for up to 3 seconds until the final message appears.
    - When the text holds a first-person word, it returns a block. The agent then sends a correction, or states that the referent is a person or quoted material. The feedback also lists any other GR-58 candidates for the agent to classify.
    - A turn with no first-person hit ends normally.
    - The correction turn the hook causes is not blocked again.
-   - Any error produces no output, so the hook never keeps a session from ending.
+   - Any error produces no output, so the hook never keeps a session from ending; the traceback is appended to `~/.claude/gr58/hook-errors.log`.
 
 ## Install and configure for Claude Code
 
@@ -110,7 +110,7 @@ Remove the `Stop` entry that runs `gr58-check.sh` from `~/.claude/settings.json`
 - **The hook runs in every project** in which Claude Code loads `~/.claude/settings.json`.
 - **Hook settings may be read only when a session starts.** The Claude Code hook documentation says so, although in testing a running session ran a newly added `Stop` entry without a restart. If the hook does not fire, restart the session or review the change in `/hooks`.
 - **A higher-level setting can switch it off.** A `disableAllHooks` setting in project settings or an organization-wide settings policy stops it from running.
-- **It fails open.** With `bash`, `python3` or `gr58_scan.py` missing, or on any error, the hook produces no output, and nothing reports that it did not run.
+- **It fails open.** With `bash`, `python3` or `gr58_scan.py` missing, or on any error, the hook produces no output. An error inside `gr58_scan.py` is appended to `~/.claude/gr58/hook-errors.log`; a missing `bash`, `python3` or `gr58_scan.py` is reported nowhere.
 
 ## License
 
