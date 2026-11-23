@@ -42,8 +42,8 @@ To have the agent apply the rule, include its text in the agent's instructions, 
 
 1. The event's `transcript_path` is read. The turn's text is every agent text block after the last entry carrying the user's own text; tool results do not start a turn.
 2. The scan skips fenced code, inline code, double-quoted spans, cross-references and Appendix I style references, then lists candidates.
-3. A first-person hit (I, me, my, mine, myself, we, us, our, ours, let's) produces `{"decision":"block","reason":...}`. The reason lists those hits with line and context, followed by any GR-58 (b) candidates. The agent then continues and sends a correction, or states in one line that the referent is a person or quoted material.
-4. A turn with only (b) candidates, or none, produces no output and ends normally.
+3. A first-person hit (I, me, my, mine, myself, we, us, our, ours, let's) produces `{"decision":"block","reason":...}`. The reason lists those hits with line and context and directs the agent to resend the message with them removed. GR-58 (b) candidates are not reported.
+4. A turn with no first-person hit produces no output and ends normally.
 5. When `stop_hook_active` is true, the event comes from the correction turn the hook itself caused; the hook produces no output, so one block yields at most one extra turn.
 
 ## Limits

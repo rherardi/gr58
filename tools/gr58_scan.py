@@ -218,7 +218,7 @@ def hook_decision(event):
     """Map one Stop-hook input to a decision: block on a first-person hit, else no output.
 
     Returns the JSON string to print, or "" for no output. A block lists the first-person
-    hits and any (b) candidates; stop_hook_active ends the cycle after one correction turn.
+    hits only; stop_hook_active ends the cycle after one correction turn.
     """
     if event.get("stop_hook_active"):
         return ""
@@ -227,13 +227,9 @@ def hook_decision(event):
     first = [h for h in hits if h[1].lower() in FIRST_PERSON]
     if not first:
         return ""
-    others = [h for h in hits if h[1].lower() not in FIRST_PERSON]
-    lines = ["GR-58 (c): the last message contains first-person words. Where the referent is the agent,"
-             " send a corrected message; where it is a person or quoted material, say so in one line."]
+    lines = ["GR-58 (c): first-person words in agent text refer to the agent. Resend the message"
+             " with them removed, and nothing else."]
     lines += [f"  line {n}: {w!r}: {c}" for n, w, c in first]
-    if others:
-        lines.append("GR-58 (b) candidates to classify in the same pass:")
-        lines += [f"  line {n}: {w!r}: {c}" for n, w, c in others]
     reason = "\n".join(lines)
     if len(reason) > REASON_LIMIT:
         reason = reason[:REASON_LIMIT].rsplit("\n", 1)[0] + "\n  (list truncated)"
