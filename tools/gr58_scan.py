@@ -45,9 +45,17 @@ B_FORMS = [
 B_RE = re.compile(r"(?<!\w)(" + "|".join(B_FORMS) + r")(?!\w)", re.I)
 
 # (c) first-person words, matched with case so "US" and the index variable "i" are not hits; "let's" is "let us".
+# Contractions (I'm, I've, I'd, I'll, we're, we've, we'd, we'll, let's) are tried first so the hit is the whole
+# contraction; a lowercase "i" counts only inside one. APOS covers the apostrophe characters text carries;
+# U+02BC is a word character, so without the contraction branch "Iʼm" fails the trailing (?![\w-]).
+APOS = "['’‘ʼ´`]"
 C_RE = re.compile(
-    r"(?<![\w-])(I|[Mm]e|ME|[Mm]y|MY|[Mm]ine|[Mm]yself|[Ww]e|WE|[Uu]s|[Oo]ur|OUR|[Oo]urs"
-    r"|[Ll]et['’]s)(?![\w-])"
+    r"(?<![\w-])("
+    rf"[Ii]{APOS}(?:[Mm]|[Vv][Ee]|[Dd]|[Ll][Ll])"
+    rf"|(?:[Ww]e|WE){APOS}(?:[Rr][Ee]|[Vv][Ee]|[Dd]|[Ll][Ll])"
+    rf"|(?:[Ll]et|LET){APOS}[Ss]"
+    r"|I|[Mm]e|ME|[Mm]y|MY|[Mm]ine|[Mm]yself|[Ww]e|WE|[Uu]s|[Oo]ur|OUR|[Oo]urs"
+    r")(?![\w-])"
 )
 
 # ---------------------------------------------------------------------------
@@ -146,7 +154,9 @@ The check thinks the plain-text block has ended.
 **TRIGGER:** a choice made.
 
 ## GR-59 [OPERATIONAL] THE NEXT RULE.
-The scan wants the Markdown block to have ended."""
+The scan wants the Markdown block to have ended.
+Next i’m running the suite.
+Weʼre running the suite, and letʼs rerun it."""
 
 CLEAN = """Appendix I lists the lifecycle documents.
 See Appendix I.8 and section 2.1 for the US English rule; see R6 and see below.
@@ -165,7 +175,8 @@ TRIGGER: writing a sentence; for example a choice made, before deciding.
 ## GR-59 [OPERATIONAL] THE NEXT RULE.
 The user's request reads "OK, let's use
 the shorter form," quoted across a line break.
-The SDK I/O path and the region us-east-1 are unaffected."""
+The SDK I/O path and the region us-east-1 are unaffected.
+The tool’s output, the usersʼ list and the item´s id are unaffected."""
 
 
 def self_test():
@@ -187,7 +198,6 @@ def self_test():
 # ---------------------------------------------------------------------------
 
 
-FIRST_PERSON = {"i", "me", "my", "mine", "myself", "we", "us", "our", "ours", "let's", "let’s"}
 REASON_LIMIT = 1800   # Claude Code truncates hook context beyond about 2 KB
 ERROR_LOG = os.path.expanduser("~/.claude/gr58/hook-errors.log")
 FINAL_WAIT_SECONDS, FINAL_POLL_SECONDS = 3.0, 0.1
@@ -270,7 +280,7 @@ def hook_decision(event):
         return ""
     text = turn_text(event)
     hits = list(scan(text))
-    first = [h for h in hits if h[1].lower() in FIRST_PERSON]
+    first = [h for h in hits if C_RE.fullmatch(h[1])]
     if not first:
         return ""
     lines = ["GR-58 (c): first-person words in agent text refer to the agent. Resend the message"

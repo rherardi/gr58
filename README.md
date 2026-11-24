@@ -23,7 +23,7 @@ GR-58 is applied through three mechanisms.
 
 1. **Rule text.** The "Rule" section of `gr58-check.md` goes into the agent's instructions, for example `~/.claude/CLAUDE.md`, so the agent reads it at the start of every session.
 2. **Candidate scan.** `gr58_scan.py` lists words that may break the rule. Its output is a list of candidates, not a compliance result; each hit is read and classified.
-   - **Matched:** the rule's example words with their inflected and noun forms (decides, decision, choice, assumption), including hyphenated forms such as "self-aware". First-person words are matched with case, so "US" and the index variable `i` are not hits.
+   - **Matched:** the rule's example words with their inflected and noun forms (decides, decision, choice, assumption), including hyphenated forms such as "self-aware". First-person words are matched with case, so "US" and the index variable `i` are not hits. Contractions (I'm, I've, I'd, I'll, we're, we've, we'd, we'll, let's) are matched whole, in either case and with any common apostrophe character, including a lowercase "i'm".
    - **Skipped:** fenced and inline code, double-quoted spans (straight and curly, including across a line break within a paragraph), cross-references such as "see R6" or "see below", Appendix I style references, and the text of a GR-58 rule definition.
    - **Output:** one line per hit: `file:line`, the word, and its context.
 3. **Stop hook.** At the end of each Claude Code turn, `~/.claude/hooks/gr58-check.sh` runs `gr58_scan.py --hook`:

@@ -42,7 +42,7 @@ To have the agent apply the rule, include its text in the agent's instructions, 
 
 1. The event's `transcript_path` is read. The turn's text is every agent text block after the last entry carrying the user's own text; tool results do not start a turn. Claude Code can fire the `Stop` event before the final message is written to the transcript, so the event's `last_assistant_message` is appended when the transcript does not yet hold it. An event without that field makes the hook re-read the transcript for up to 3 seconds until the final message appears.
 2. The scan skips fenced code, inline code, double-quoted spans, cross-references and Appendix I style references, then lists candidates.
-3. A first-person hit (I, me, my, mine, myself, we, us, our, ours, let's) produces `{"decision":"block","reason":...}`. The reason lists those hits with line and context and directs the agent to resend the message with them removed. GR-58 (b) candidates are not reported.
+3. A first-person hit (I, me, my, mine, myself, we, us, our, ours, and the contractions I'm, I've, I'd, I'll, we're, we've, we'd, we'll and let's, in either case and with any common apostrophe character) produces `{"decision":"block","reason":...}`. The reason lists those hits with line and context and directs the agent to resend the message with them removed. GR-58 (b) candidates are not reported.
 4. A turn with no first-person hit produces no output and ends normally.
 5. When `stop_hook_active` is true, the event comes from the correction turn the hook itself caused; the hook produces no output, so one block yields at most one extra turn.
 
